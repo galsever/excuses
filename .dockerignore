@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+data
+probe
+*.log
+Dockerfile
+.dockerignore

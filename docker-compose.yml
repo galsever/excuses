@@ -1,0 +1,14 @@
+# git clone https://github.com/galsever/excuses && cd excuses && docker compose up -d
+# then open http://localhost:3000, the setup code is in: docker compose logs | grep Setup-Code
+services:
+  excuses:
+    image: ghcr.io/galsever/excuses:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - data:/data
+
+volumes:
+  data:
