@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { deleteGroup, saveGroup } from "@/app/actions";
 import { SubjectCard } from "@/components/subject-card";
-import { loadSnapshot } from "@/lib/db";
+import { loadGroups, loadSnapshot } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { requireSession } from "@/lib/session";
-import { subjectStats, totalStats } from "@/lib/stats";
+import { groupStats, subjectStats, totalStats } from "@/lib/stats";
 import { todayIso, viennaNow } from "@/lib/untis/fetch";
 
 export const metadata = { title: "Statistik · Fehlstunden" };
@@ -34,8 +35,10 @@ export default async function StatsPage({ searchParams }: PageProps<"/statistik"
     : ranges[(r in ranges ? r : current) as keyof typeof ranges];
   const active = custom ? "eigene" : r in ranges ? r : current;
 
-  const stats = subjectStats(snap.lessons, snap.parts, snap.units, range, viennaNow());
+  const groups = loadGroups();
+  const stats = groupStats(subjectStats(snap.lessons, snap.parts, snap.units, range, viennaNow()), groups);
   const total = totalStats(stats);
+  const subjects = [...new Set(snap.lessons.map((l) => l.subject).filter(Boolean))].sort();
 
   const chip = (key: string, label: string) => (
     <Link
@@ -88,6 +91,41 @@ export default async function StatsPage({ searchParams }: PageProps<"/statistik"
           ))}
         </div>
       )}
+
+      <details className="rounded-2xl border border-border bg-card p-4 text-sm shadow-sm">
+        <summary className="cursor-pointer font-semibold">Fächer gruppieren</summary>
+        {groups.length > 0 && (
+          <ul className="mt-3 space-y-1.5">
+            {groups.map((g) => (
+              <li key={g.name} className="flex items-center justify-between gap-3">
+                <span>
+                  <span className="font-medium">{g.name}</span> <span className="text-muted">{g.subjects.join(" + ")}</span>
+                </span>
+                <form action={deleteGroup}>
+                  <input type="hidden" name="name" value={g.name} />
+                  <button className="text-xs text-muted hover:text-bad">Auflösen</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form action={saveGroup} className="mt-3 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {subjects.map((s) => (
+              <label key={s} className="cursor-pointer">
+                <input type="checkbox" name="subject" value={s} className="peer sr-only" />
+                <span className="inline-block rounded-full border border-border px-3 py-1 text-muted peer-checked:border-accent peer-checked:bg-accent peer-checked:text-accent-foreground">
+                  {s}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input name="name" required maxLength={40} placeholder="Name, z.B. BWM" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1" />
+            <button className="rounded-lg border border-accent px-3 py-1.5 text-accent">Gruppieren</button>
+          </div>
+        </form>
+      </details>
     </div>
   );
 }

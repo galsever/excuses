@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatUnits } from "./format";
 import { buildSnapshot, groupDays, semesters } from "./model";
-import { percentTone, subjectStats, totalStats } from "./stats";
+import { groupStats, percentTone, subjectStats, totalStats } from "./stats";
 import { chunks } from "./untis/fetch";
 import type { RawAbsence, RawAbsenceTime, RawLesson, RawSnapshot } from "./untis/types";
 
@@ -129,6 +129,12 @@ describe("subjectStats", () => {
   it("ignores lessons that have not happened yet", () => {
     const early = subjectStats(snap.lessons, snap.parts, snap.units, all, { date: "2026-09-28", minutes: 9 * 60 });
     expect(early.find((s) => s.subject === "AM")?.held).toBe(1);
+  });
+  it("merges grouped subjects into one row", () => {
+    const g = groupStats(stats, [{ name: "AMD", subjects: ["AM", "D", "X"] }]);
+    expect(g.find((s) => s.subject === "AMD")).toMatchObject({ subjectLong: "AM + D", held: 4, excused: 2, present: 2, percent: 50 });
+    expect(g.some((s) => s.subject === "AM" || s.subject === "D")).toBe(false);
+    expect(totalStats(g)).toMatchObject(totalStats(stats));
   });
   it("respects the range", () => {
     expect(subjectStats(snap.lessons, snap.parts, snap.units, { from: "2026-09-29", to: "2026-09-29" }, now).map((s) => s.subject).sort()).toEqual(["D", "POS"]);

@@ -73,3 +73,35 @@ export function percentTone(percent: number | null): "good" | "warn" | "bad" | "
   if (percent >= 50) return "warn";
   return "bad";
 }
+
+/** Subjects the owner counts as one, e.g. BWM = BWM1 + BWM2. A subject belongs to at most one group. */
+export type SubjectGroup = { name: string; subjects: string[] };
+
+/** Merges the stats of grouped subjects into one row per group, named after the group. */
+export function groupStats(stats: SubjectStats[], groups: SubjectGroup[]): SubjectStats[] {
+  const groupOf = new Map(groups.flatMap((g) => g.subjects.map((s) => [s, g] as const)));
+  const merged = new Map<string, SubjectStats>();
+  const out: SubjectStats[] = [];
+  for (const s of stats) {
+    const g = groupOf.get(s.subject);
+    if (!g) {
+      out.push(s);
+      continue;
+    }
+    const m = merged.get(g.name);
+    if (!m) {
+      const row = { ...s, subject: g.name, subjectLong: g.subjects.filter((x) => stats.some((y) => y.subject === x)).join(" + ") };
+      merged.set(g.name, row);
+      out.push(row);
+    } else {
+      m.held += s.held;
+      m.excused += s.excused;
+      m.unexcused += s.unexcused;
+    }
+  }
+  for (const s of merged.values()) {
+    s.present = s.held - s.excused - s.unexcused;
+    s.percent = s.held ? (s.present / s.held) * 100 : null;
+  }
+  return out.sort((a, b) => (a.percent ?? 101) - (b.percent ?? 101) || a.subject.localeCompare(b.subject));
+}

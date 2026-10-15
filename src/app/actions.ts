@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createSessionToken, SESSION_COOKIE, SESSION_DAYS, verifySessionToken } from "@/lib/auth";
 import { loadCredentials, parseServer, same, saveCredentials, setupCode, untisConfig, type Credentials } from "@/lib/credentials";
-import { saveReason as dbSaveReason, setMeta } from "@/lib/db";
+import { saveReason as dbSaveReason, loadGroups, saveGroups, setMeta } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { sync, type SyncStatus } from "@/lib/sync";
 import { UntisError, UntisSession } from "@/lib/untis/client";
@@ -114,4 +114,25 @@ export async function syncNow(force: boolean): Promise<SyncStatus> {
   const status = await sync(force);
   revalidatePath("/", "layout");
   return status;
+}
+
+/** Creates or replaces a subject group; its subjects leave any other group. */
+export async function saveGroup(form: FormData) {
+  await requireSession();
+  const name = String(form.get("name") ?? "").trim().slice(0, 40);
+  const subjects = [...new Set(form.getAll("subject").map(String))];
+  if (!name || subjects.length < 2) return;
+  const rest = loadGroups()
+    .filter((g) => g.name !== name)
+    .map((g) => ({ ...g, subjects: g.subjects.filter((s) => !subjects.includes(s)) }))
+    .filter((g) => g.subjects.length >= 2);
+  saveGroups([...rest, { name, subjects }]);
+  revalidatePath("/statistik");
+}
+
+export async function deleteGroup(form: FormData) {
+  await requireSession();
+  const name = String(form.get("name") ?? "");
+  saveGroups(loadGroups().filter((g) => g.name !== name));
+  revalidatePath("/statistik");
 }

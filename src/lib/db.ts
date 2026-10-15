@@ -6,6 +6,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { dataDir } from "./key";
 import { buildSnapshot, type Snapshot } from "./model";
+import type { SubjectGroup } from "./stats";
 import type { RawSnapshot } from "./untis/types";
 
 let db: Database.Database | null = null;
@@ -98,4 +99,16 @@ export function getMeta(key: string): string | null {
 export function setMeta(key: string, value: string | null) {
   if (value == null) getDb().prepare("DELETE FROM meta WHERE key = ?").run(key);
   else getDb().prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+export function loadGroups(): SubjectGroup[] {
+  try {
+    return JSON.parse(getMeta("subject_groups") ?? "[]") as SubjectGroup[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveGroups(groups: SubjectGroup[]) {
+  setMeta("subject_groups", groups.length ? JSON.stringify(groups) : null);
 }

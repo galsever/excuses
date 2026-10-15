@@ -6,11 +6,11 @@ import "server-only";
 import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { loadNotes, loadSnapshot, markAsked, saveReason } from "./db";
+import { loadGroups, loadNotes, loadSnapshot, markAsked, saveReason } from "./db";
 import { formatTime, formatUnits } from "./format";
 import { checkLetter, ISO } from "./letter";
 import { addDays, groupDays, type Absence, type Snapshot } from "./model";
-import { subjectStats, totalStats } from "./stats";
+import { groupStats, subjectStats, totalStats } from "./stats";
 import { sync, syncStatus } from "./sync";
 import { todayIso, viennaNow } from "./untis/fetch";
 
@@ -187,7 +187,7 @@ export function createMcpServer(origin: string) {
       const snap = await fresh();
       if (!snap) return fail("Noch keine Daten (noch nie synchronisiert).");
       const r = range(snap, a.range, a.from, a.to);
-      const stats = subjectStats(snap.lessons, snap.parts, snap.units, r, viennaNow());
+      const stats = groupStats(subjectStats(snap.lessons, snap.parts, snap.units, r, viennaNow()), loadGroups());
       const row = (s: (typeof stats)[number]) => ({
         subject: s.subject,
         name: s.subjectLong,
